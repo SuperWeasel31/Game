@@ -1,1 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini Minecraft (HTML + Three.js)</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>Mini Minecraft</b><br>
+    WASD = Move<br>
+    Mouse = Look<br>
+    Space = Jump<br>
+    Click = Lock Mouse
+  </div>
+
+  <!-- Three.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <script>
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Light
+    const sun = new THREE.DirectionalLight(0xffffff, 1);
+    sun.position.set(50, 100, 50);
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+    // Controls
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    document.body.addEventListener('click', () => controls.lock());
+    scene.add(controls.getObject());
+
+    // Player physics
+    let velocity = new THREE.Vector3();
+    let canJump = false;
+
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.code] = true);
+    document.addEventListener('keyup', e => keys[e.code] = false);
+
+    // Block material
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x3cb043 });
+    const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+
+    // Block geometry
+    const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+
+    // World generation
+    const world = [];
+    const size = 20;
+
+    for (let x = -size; x < size; x++) {
+      for (let z = -size; z < size; z++) {
+        const height = Math.floor(Math.random() * 3);
+        for (let y = 0; y <= height; y++) {
+          const mat = y === height ? grassMat : dirtMat;
+          const block = new THREE.Mesh(blockGeo, mat);
+          block.position.set(x, y, z);
+          scene.add(block);
+          world.push(block);
+        }
+      }
+    }
+
+    // Start position
+    camera.position.y = 5;
+
+    // Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Game loop
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+      velocity.y -= 20 * delta; // gravity
+
+      const speed = 10;
+      if (keys['KeyW']) velocity.z -= speed * delta;
+      if (keys['KeyS']) velocity.z += speed * delta;
+      if (keys['KeyA']) velocity.x -= speed * delta;
+      if (keys['KeyD']) velocity.x += speed * delta;
+
+      if (keys['Space'] && canJump) {
+        velocity.y = 8;
+        canJump = false;
+      }
+
+      controls.moveRight(-velocity.x * delta);
+      controls.moveForward(-velocity.z * delta);
+      controls.getObject().position.y += velocity.y * delta;
+
+      // Ground collision
+      if (controls.getObject().position.y < 2) {
+        velocity.y = 0;
+        controls.getObject().position.y = 2;
+        canJump = true;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
 
